@@ -26,3 +26,7 @@ linux/*.so
 
 mac/*.dylib
 
+
+windows/ConsoleApplication1/x64/
+
+windows/.idea/
