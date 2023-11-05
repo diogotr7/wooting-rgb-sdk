@@ -73,14 +73,12 @@ jobs:
         if: startsWith(matrix.os, 'ubuntu')
         shell: bash
         run: |
-          cp linux/*.pc dist/ 
           cp linux/*.so dist/
 
       - name: Copy dist files (Mac)
         if: startsWith(matrix.os, 'mac')
         shell: bash
         run: |
-          cp mac/*.pc dist/
           cp mac/*.dylib dist/
 
       - name: Copy dist files (Windows)
