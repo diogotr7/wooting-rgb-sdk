@@ -1,0 +1,101 @@
+name: Upload artifacts
+
+on:
+  push:
+  pull_request:
+    types:
+      - synchronize
+
+env:
+  # Path to the solution file relative to the root of the project.
+  SOLUTION_FILE_PATH: windows/wooting-rgb-sdk.sln
+
+  BUILD_CONFIGURATION: Release
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            target: x64
+          - os: windows-latest
+            target: x86
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Add MSBuild to PATH (Windows)
+        if: startsWith(matrix.os, 'windows')
+        uses: microsoft/setup-msbuild@v1.1
+
+      - name: Install dependencies
+        uses: ConorMacBride/install-package@v1
+        with:
+          brew: hidapi
+          apt: libhidapi-dev libhidapi-hidraw0
+
+      - name: Build (Linux)
+        if: startsWith(matrix.os, 'ubuntu')
+        run: cd linux && make CDEFS="-Werror"
+
+      - name: Build (Mac)
+        if: startsWith(matrix.os, 'mac')
+        run: cd mac && make CDEFS="-Werror"
+
+      - name: Build (Windows)
+        if: startsWith(matrix.os, 'windows')
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        # Add additional options to the MSBuild command line here (like platform or verbosity level).
+        # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
+        run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=${{matrix.target}} ${{env.SOLUTION_FILE_PATH}}
+
+      - name: Init dist
+        shell: bash
+        run: |
+          mkdir dist
+          cp src/*.h dist/
+
+      - name: Copy dist files (Linux)
+        if: startsWith(matrix.os, 'ubuntu')
+        shell: bash
+        run: |
+          cp linux/*.pc dist/ 
+          cp linux/*.so dist/
+
+      - name: Copy dist files (Mac)
+        if: startsWith(matrix.os, 'mac')
+        shell: bash
+        run: |
+          cp mac/*.pc dist/
+          cp mac/*.dylib dist/
+
+      - name: Copy dist files (Windows)
+        if: startsWith(matrix.os, 'windows')
+        shell: bash
+        run: |
+          # Copy Windows x64 files
+          cp windows/x64/${{env.BUILD_CONFIGURATION}}/wooting-rgb-sdk64.dll dist/ || true
+          cp windows/x64/${{env.BUILD_CONFIGURATION}}/wooting-rgb-sdk64.lib dist/ || true
+          cp windows/x64/${{env.BUILD_CONFIGURATION}}/wooting-rgb-sdk64.pdb dist/ || true
+
+          # Copy Windows x86 files
+          cp windows/${{env.BUILD_CONFIGURATION}}/wooting-rgb-sdk.dll dist/ || true
+          cp windows/${{env.BUILD_CONFIGURATION}}/wooting-rgb-sdk.lib dist/ || true
+          cp windows/${{env.BUILD_CONFIGURATION}}/wooting-rgb-sdk.pdb dist/ || true
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: Artifacts
+          path: dist/
