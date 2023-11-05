@@ -47,7 +47,10 @@ jobs:
 
       - name: Build (Linux)
         if: startsWith(matrix.os, 'ubuntu')
-        run: cd linux && make CDEFS="-Werror"
+        run:  | 
+            cd linux
+            make CDEFS="-Werror"
+            ls -al 
 
       - name: Build (Mac)
         if: startsWith(matrix.os, 'mac')
@@ -97,5 +100,5 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: Artifacts
+          name: ${{ matrix.os }}
           path: dist/
